@@ -1,0 +1,256 @@
+/*      
+		CM MMF extracts the data from the lookthrough tables 
+		SOLII Amount is sliced according to the PCT of FUNDS
+		The report is generated at a SNP equivalent rating FACT
+		FACTS - PORTFOLIO NAME ,  PARENT CUSIP , COUNTERPARTY , TICKER and KEY FACT - SNP EQUIVALENT RATING
+		MEASURE - LK_THRU PCT_OF_FUND * PARENT_CUSIP's X_MARKET_VALUE 
+*/
+
+	
+	
+/* 
+		CM MMF Extracts 
+		Earlier generated for PUNIL , now sent to Cliff and Team 
+
+		Old Code had loads of Counterparty Data Quality corrections / Still would need to be corrected at the Source DC143 file
+		and unwanted joins - Streamlining the process for On Cloud SAS EG execution
+		removed the WTFL calculation logic as this is implemented within the System
+*/
+
+PROC SQL;
+
+
+CREATE TABLE WORK.MMF_FINAL_01 AS 
+
+SELECT 
+
+	MMF_P1.PORTF_NAME	
+	,MMF_P1.PARENT_CUSIP	
+	,MMF_P1.COUNTERPARTY	
+	,MMF_P1.TICKER
+	/*Derive the SNP equivalent rating from the calculated rating*/
+	,CASE WHEN SNP_DERIV.ASSESSMENT_GRADE IS NULL THEN 'NR' ELSE SNP_DERIV.ASSESSMENT_GRADE END AS SNP_EQUI_RATING
+	,SUM(MMF_P1.MKT_VALUE) AS MKT_VALUE_MMF
+
+
+FROM 
+
+		/*Inner Sub Query START*/
+		( SELECT 
+
+				/*FACTS column extraction*/
+				XIP.ENTITY_NAME AS PORTF_NAME
+				,LK_THRG.PARENT_CUSIP AS PARENT_CUSIP
+				,UPCASE(CASE 
+						WHEN TRIM(LK_THRG.COUNTERPARTY_NM) = '' THEN LK_THRG.LOOKTHROUGH_NAME 		
+						ELSE  LK_THRG.COUNTERPARTY_NM      
+				  END) AS COUNTERPARTY
+				 ,CPRTY.COUNTERPARTY_ID AS TICKER
+
+				 /* Get the MOODY's rating from the system */ 
+				,LK_THRG.RTG_MOODYS
+				,CASE WHEN MDY_RAT.ASSESSMENT_SCORE_NO IS NULL THEN 0 ELSE MDY_RAT.ASSESSMENT_SCORE_NO END AS MDY_SCORE
+				,MDY_RAT.X_SOLII_CREDIT_QUALITY_VAL AS MDY_SII_CREDIT_QLTY_VAL 
+
+				/* Get the SNP rating from the system */  
+				,LK_THRG.RTG_SP
+				,CASE WHEN SP_RAT.ASSESSMENT_SCORE_NO IS NULL THEN 0 ELSE SP_RAT.ASSESSMENT_SCORE_NO END AS SP_SCORE
+				,SP_RAT.X_SOLII_CREDIT_QUALITY_VAL AS SP_RAT_SII_CREDIT_QLTY_VAL
+
+				/* Get the FITCH rating from the system */ 
+				,LK_THRG.RTG_FITCH
+				,CASE WHEN FIT_RAT.ASSESSMENT_SCORE_NO IS NULL THEN 0 ELSE FIT_RAT.ASSESSMENT_SCORE_NO END AS FIT_SCORE
+				,FIT_RAT.X_SOLII_CREDIT_QUALITY_VAL AS FIT_RAT_SII_CREDIT_QLTY_VAL	
+				
+				/* Get the Calculated rating from the system */
+				/* This rating will be used to calculate the SNP Equivalent Rating */
+				,LK_THRG.SOLII_CREDIT_RTG
+				,CASE WHEN SOLII_RAT.ASSESSMENT_SCORE_NO IS NULL THEN 0 ELSE SOLII_RAT.ASSESSMENT_SCORE_NO END AS SOLII_SCORE
+				,SOLII_RAT.X_SOLII_CREDIT_QUALITY_VAL AS SII_CREDIT_QLTY_VAL
+
+				/*Calculation of the Market value for the child needs to be done at this stage , else Aggregation won't work*/
+				/*Slice the Total Market fund of the parent from the Percentage of FUND from the child*/
+				, ((LK_THRG.PCT_OF_FUND * F.X_MARKET_VALUE  )  / 100 )  AS MKT_VALUE
+
+			FROM 
+				Test.X_FUND_LOOK_THROUGH LK_THRG
+
+			INNER JOIN 																						
+				test.FINANCIAL_INSTRUMENT A																						
+				ON 																						
+				A.FINANCIAL_INSTRUMENT_RK = LK_THRG.FINANCIAL_INSTRUMENT_RK																					
+				AND DATEPART(A.VALID_FROM_DTTM)	<= &AS_AT_MTH
+				AND DATEPART(A.VALID_TO_DTTM)	> &AS_AT_MTH
+
+			INNER JOIN 																						
+				test.FINANCIAL_POSITION F																						
+				ON 
+				F.FINANCIAL_INSTRUMENT_RK = A.FINANCIAL_INSTRUMENT_RK																						
+				AND DATEPART(F.VALID_FROM_DTTM)	<= &AS_AT_MTH	
+				AND DATEPART(F.VALID_TO_DTTM) >	&AS_AT_MTH	
+																																															
+			INNER JOIN																						
+				test.X_INVESTMENT_PORTFOLIO XIP																						
+				ON																						
+				XIP.PORTFOLIO_ID = F.PORTFOLIO_ID 																				
+				AND PUT(DATEPART(XIP.VALID_TO_DTTM),DATE9.) = '31DEC9999' 
+
+			LEFT JOIN 
+				test.COUNTERPARTY CPRTY
+				ON 
+				A.ISSUER_COUNTERPARTY_RK = CPRTY.COUNTERPARTY_RK
+				AND DATEPART(CPRTY.VALID_FROM_DTTM)	<= &AS_AT_MTH	
+				AND DATEPART(CPRTY.VALID_TO_DTTM) >	&AS_AT_MTH	
+				AND UPCASE(CPRTY.X_LEH_SUBSECTOR_CD) <> 'ABS'	
+
+			/*Get the Fitch Rating Details*/			
+			LEFT JOIN
+				(
+				SELECT DISTINCT 
+				ASSESSMENT_GRADE,
+				ASSESSMENT_SCORE_NO,
+				X_SOLII_CREDIT_QUALITY_VAL
+				FROM 
+				test.ASSESSMENT_RATING_GRADE 
+				WHERE
+				ASSESSMENT_AGENCY_CD = 'FIT'
+				AND PUT(DATEPART(VALID_TO_DTTM),DATE9.) = '31DEC4747'
+				) FIT_RAT
+
+				ON LK_THRG.RTG_FITCH = FIT_RAT.ASSESSMENT_GRADE	
+
+			/*Get the Moody's Rating Details*/	
+			LEFT JOIN
+				(
+				SELECT DISTINCT 
+				ASSESSMENT_GRADE,
+				ASSESSMENT_SCORE_NO,
+				X_SOLII_CREDIT_QUALITY_VAL
+				FROM 
+				test.ASSESSMENT_RATING_GRADE 
+				WHERE 
+				ASSESSMENT_AGENCY_CD = 'MDY'
+				AND PUT(DATEPART(VALID_TO_DTTM),DATE9.) = '31DEC4747'
+				) MDY_RAT
+
+				ON 	LK_THRG.RTG_MOODYS = MDY_RAT.ASSESSMENT_GRADE	
+
+			/*Get the SNP Rating Details*/	
+			LEFT JOIN 
+				(
+				SELECT DISTINCT 
+				ASSESSMENT_GRADE,
+				ASSESSMENT_SCORE_NO ,
+				X_SOLII_CREDIT_QUALITY_VAL
+				FROM 
+				test.ASSESSMENT_RATING_GRADE 
+				WHERE 
+				ASSESSMENT_AGENCY_CD = 'S_P'
+				AND PUT(DATEPART(VALID_TO_DTTM),DATE9.) = '31DEC4747'	
+				) SP_RAT
+
+				ON 		LK_THRG.RTG_SP = SP_RAT.ASSESSMENT_GRADE		
+
+			/*Get the Calculated Waterfall Rating Details*/			
+			LEFT JOIN
+				(
+				SELECT DISTINCT 
+				ASSESSMENT_GRADE,
+				ASSESSMENT_SCORE_NO,
+				X_SOLII_CREDIT_QUALITY_VAL
+				FROM 
+				test.ASSESSMENT_RATING_GRADE 
+				WHERE
+				 PUT(DATEPART(VALID_TO_DTTM),DATE9.) = '31DEC4747'
+				 AND ASSESSMENT_AGENCY_CD <> 'OTH'
+				) SOLII_RAT
+
+				ON 		LK_THRG.SOLII_CREDIT_RTG = SOLII_RAT.ASSESSMENT_GRADE	
+				AND 	LK_THRG.SOLII_CREDIT_QUALITY_VAL = SOLII_RAT.X_SOLII_CREDIT_QUALITY_VAL
+																							
+			WHERE 
+				LK_THRG.AS_AT_DT = &AS_AT_MTH
+				AND DATEPART(LK_THRG.VALID_FROM_DTTM) <= &AS_AT_MTH	
+				AND DATEPART(LK_THRG.VALID_TO_DTTM)> &AS_AT_MTH
+
+		)MMF_P1
+		/*Inner Sub Query ENDS*/
+
+/*LEFT JOIN SUB Query to get the SNP Equivalent Rating*/
+
+LEFT JOIN 
+		(
+			SELECT 
+				DISTINCT 
+				ASSESSMENT_AGENCY_CD,
+				ASSESSMENT_GRADE,
+				ASSESSMENT_SCORE_NO,
+				X_SOLII_CREDIT_QUALITY_VAL
+			FROM 
+				test.ASSESSMENT_RATING_GRADE 
+			WHERE 
+				ASSESSMENT_AGENCY_CD = 'S_P' 
+				AND SHORTTERM_FLG = '0'
+				AND PUT(DATEPART(VALID_TO_DTTM),DATE9.) = '31DEC4747'	
+				AND UPCASE(ASSESSMENT_GRADE) NOT IN ('GOVT','GOVT EQUIV','AGENCY')
+				AND MODEL_RK = 1
+		)SNP_DERIV
+	ON 		
+		MMF_P1.SOLII_SCORE = SNP_DERIV.ASSESSMENT_SCORE_NO
+
+
+GROUP BY 
+	/*Aggregate at the following levels*/
+	PORTF_NAME	
+	,PARENT_CUSIP	
+	,COUNTERPARTY
+	,TICKER
+	,SNP_DERIV.ASSESSMENT_GRADE
+	,MMF_P1.SOLII_SCORE
+	,SNP_DERIV.ASSESSMENT_SCORE_NO
+
+	/*Exclude 0 market value assets*/
+	HAVING SUM(MKT_VALUE) <> 0 
+
+ORDER BY 
+	/*Order at the following levels*/
+	PARENT_CUSIP
+	,PORTF_NAME		
+	,COUNTERPARTY	
+	,TICKER
+	,SNP_EQUI_RATING
+
+;
+QUIT;
+
+
+
+/*Summarise before Pivot*/
+PROC SUMMARY DATA=WORK.MMF_FINAL_01;
+VAR MKT_VALUE_MMF ;
+CLASS  PARENT_CUSIP SNP_EQUI_RATING;
+OUTPUT OUT=WORK.MMF_FINAL_SUM_02 SUM=;
+RUN;
+
+/*SORT BEFORE THE PIVOT*/
+PROC SORT DATA=WORK.MMF_FINAL_SUM_02(WHERE=(_TYPE_=3));
+BY SNP_EQUI_RATING PARENT_CUSIP;
+RUN;
+
+
+/*PROCEDURE TO PIVOT*/
+PROC TRANSPOSE DATA=WORK.MMF_FINAL_SUM_02 OUT=WORK.MMF_FINAL_TRNS_03(DROP=_NAME_);
+
+/*Y - AXIS*/
+BY SNP_EQUI_RATING;
+
+/*PIVOT MONETARY COLUMN*/
+VAR MKT_VALUE_MMF;
+
+/*X - AXIS PIVOTAL COLUMN*/
+ID PARENT_CUSIP;
+IDLABEL PARENT_CUSIP;
+
+/* Remove the '.' to ''*/
+OPTIONS MISSING='';
+RUN;
