@@ -180,9 +180,9 @@ PROC SQL ;
 			, CASE
 				WHEN X_INTERNAL_RATING = '' THEN 
 												CASE	
-													WHEN A18 =  'S_P' THEN  'S&P Global Ratings Europe Limited (LEI code:5493008B2TU3S6QE1E12)'
-													WHEN A18 =  'MDY' THEN  'Moody'||'’'||'s Investors Service Ltd (LEI code: 549300SM89WABHDNJ349)' 
-													WHEN A18 =  'FIT' THEN  'Fitch Ratings Limited (LEI code: 2138009F8YAHVC8W3Q52)'		
+													WHEN A18 =  'S_P' THEN  'Standard & Poor'||"'"||'s'
+													WHEN A18 =  'MDY' THEN  'Moody'||"'"||'s'
+													WHEN A18 =  'FIT' THEN  'Fitch'		
 													ELSE A18
 												END
 				WHEN  X_INTERNAL_RATING = 'Not Applicable - CIC' THEN 'Not Applicable - CIC'
