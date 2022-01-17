@@ -168,9 +168,9 @@ PROC SQL ;
 		, A34 AS C0290
 
 		, CASE 	
-			WHEN A35 =  'S_P' THEN  'S&P Global Ratings Europe Limited (LEI code:5493008B2TU3S6QE1E12)'
-			WHEN A35 =  'MDY' THEN 'Moody'||'’'||'s Investors Service Ltd (LEI code: 549300SM89WABHDNJ349)' 
-			WHEN A35 =  'FIT' THEN  'Fitch Ratings Limited (LEI code: 2138009F8YAHVC8W3Q52)'		
+			WHEN A35 =  'S_P' THEN 'Standard & Poor'||"'"||'s'
+			WHEN A35 =  'MDY' THEN 'Moody'||"'"||'s' 
+			WHEN A35 =  'FIT' THEN 'Fitch'			
 			ELSE 'NR'			
 		  END AS C0300
 

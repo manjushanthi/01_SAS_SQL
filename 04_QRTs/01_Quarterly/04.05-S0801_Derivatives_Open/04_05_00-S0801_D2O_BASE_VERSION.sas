@@ -1,5 +1,5 @@
 
-PROC SQL ;
+PROC SQL;
 
 /*Create Temp table to load the extracted Data*/
 
