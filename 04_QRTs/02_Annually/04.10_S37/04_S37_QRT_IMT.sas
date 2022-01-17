@@ -27,9 +27,9 @@ SELECT
 	,DRV_SCR_MIN_NO.ASSESSMENT_GRADE
 		
 	,CASE 
-		WHEN C0090 = 'S_P' THEN 'Standard & Poor'||'’'||'s Credit Market Services Europe Limited (LEI code: 549300363WVTTH0TW460)'
-		WHEN C0090 = 'MDY' THEN 'Moody'||'’'||'s Investors Service Ltd (LEI code: 549300SM89WABHDNJ349)' 
-		WHEN C0090 = 'FIT' THEN  'Fitch Ratings Limited (LEI code: 2138009F8YAHVC8W3Q52)'
+		WHEN C0090 = 'S_P' THEN 'Standard & Poor'||"'"||'s' 
+		WHEN C0090 = 'MDY' THEN 'Moody'||"'"||'s' 
+		WHEN C0090 = 'FIT' THEN 'Fitch'
 		ELSE ''	END AS C0090 
 
 	,C0091
@@ -216,9 +216,9 @@ SELECT
 	,DRV_SCR_MIN_NO.ASSESSMENT_GRADE
 		
 	,CASE 
-		WHEN C0090 = 'S_P' THEN 'Standard & Poor'||'’'||'s Credit Market Services Europe Limited (LEI code: 549300363WVTTH0TW460)'
-		WHEN C0090 = 'MDY' THEN 'Moody'||'’'||'s Investors Service Ltd (LEI code: 549300SM89WABHDNJ349)' 
-		WHEN C0090 = 'FIT' THEN  'Fitch Ratings Limited (LEI code: 2138009F8YAHVC8W3Q52)'
+		WHEN C0090 = 'S_P' THEN 'Standard & Poor'||"'"||'s' 
+		WHEN C0090 = 'MDY' THEN 'Moody'||"'"||'s' 
+		WHEN C0090 = 'FIT' THEN 'Fitch'
 		ELSE ''	END AS C0090 
 
 	,C0091
@@ -430,3 +430,10 @@ DATA S37_QRT_NACE_PIVOT ;
 KEEP C0100 C0150 ; 
 SET WORK.S37_QRT_NACE_SUM;
 RUN;
+
+PROC DATASETS NOLIST LIBRARY=WORK ;
+/*delete the temp tables*/
+DELETE WORK.S37_QRT_CPRTY_SUM;
+DELETE WORK.S37_QRT_NACE_SUM;
+RUN;
+
