@@ -86,9 +86,9 @@ PROC SQL ;
 			, CASE
 				WHEN X_INTERNAL_RATING = '' THEN 
 												CASE	
-													WHEN A18 =  'S_P' THEN  'Standard & Poor'||"'"||'s'
-													WHEN A18 =  'MDY' THEN  'Moody'||"'"||'s'
-													WHEN A18 =  'FIT' THEN  'Fitch'		
+													WHEN A18 =  'S_P' THEN  'Standard & Poor'||"'"||'s (to be used when the split below is not available)'
+													WHEN A18 =  'MDY' THEN  'Moody'||"'"||'s (to be used when the split below is not available)'
+													WHEN A18 =  'FIT' THEN  'Fitch (to be used when the split below is not available)'	
 													ELSE A18		
 												END
 				WHEN  X_INTERNAL_RATING = 'Not Applicable - CIC' THEN ''
