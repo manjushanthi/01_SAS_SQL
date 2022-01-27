@@ -38,7 +38,11 @@ SELECT
 
 	 , ASSESSMENT_GRADE AS C0080
 
-	 , C0090
+	 , CASE 
+		WHEN C0090 = 'Standard & Poor'||"'"||'s'  THEN  'Standard & Poor'||"'"||'s (to be used when the split below is not available)' 
+		WHEN C0090 = 'Moody'||"'"||'s'  THEN 'Moody'||"'"||'s (to be used when the split below is not available)' 
+		WHEN C0090 = 'Fitch' THEN 'Fitch (to be used when the split below is not available)'
+		ELSE ''	END AS C0090 
 
 	 , C0091
 
