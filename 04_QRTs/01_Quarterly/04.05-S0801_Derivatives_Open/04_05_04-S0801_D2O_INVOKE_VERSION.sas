@@ -168,9 +168,9 @@ PROC SQL ;
 		, A34 AS C0290
 
 		, CASE 	
-			WHEN A35 =  'S_P' THEN 'Standard & Poor'||"'"||'s'
-			WHEN A35 =  'MDY' THEN 'Moody'||"'"||'s' 
-			WHEN A35 =  'FIT' THEN 'Fitch'			
+			WHEN A35 =  'S_P' THEN 'Standard & Poor'||"'"||'s (to be used when the split below is not available)'
+			WHEN A35 =  'MDY' THEN 'Moody'||"'"||'s (to be used when the split below is not available)' 
+			WHEN A35 =  'FIT' THEN 'Fitch (to be used when the split below is not available)'			
 			ELSE 'NR'			
 		  END AS C0300
 
