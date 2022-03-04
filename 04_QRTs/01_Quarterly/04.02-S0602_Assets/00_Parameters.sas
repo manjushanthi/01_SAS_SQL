@@ -15,7 +15,7 @@ libname test_mar '/sdwmigration/POST_Q3_2021/whm01_sdw_mart/sasdata';
 %let CURR_Q    = '30SEP2021'd; /*should be = AS_AT_MTH*/
 %let PREV_Q    = '30JUN2021'd;
 
-
+/*Added via Prompt*/
 
 /* 999 - System calculated Rating */
 /* 555 - Business Assigned Rating */
